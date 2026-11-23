@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Happy Monthsary</title>
+<style>
+  :root {
+    --pink: #ff6b9d;
+    --pink-dark: #e0457f;
+    --violet: #7c5cff;
+    --ink: #2b2140;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; width: 100%;
+    overflow: hidden;               /* no horizontal (or any) scroll */
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    color: var(--ink);
+    background: linear-gradient(135deg, #ffe3ef 0%, #e6dcff 50%, #d9f0ff 100%);
+    background-size: 200% 200%;
+    animation: drift 14s ease infinite;
+  }
+  @keyframes drift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+
+  /* faint grid, for the nerdy touch */
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none;
+    background-image: linear-gradient(rgba(124,92,255,.07) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(124,92,255,.07) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .stage {
+    position: relative; height: 100%; width: 100%;
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+  }
+
+  .card {
+    width: 100%; max-width: 420px;
+    background: rgba(255,255,255,.82);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-radius: 28px; padding: 28px 22px 24px;
+    box-shadow: 0 18px 50px rgba(124,92,255,.22);
+    text-align: center;
+    transition: opacity .4s ease, transform .4s ease;
+  }
+  .card.hide { opacity: 0; transform: scale(.9); pointer-events: none; }
+
+  .badge {
+    display: inline-block; font-family: ui-monospace, Consolas, monospace;
+    font-size: 12px; letter-spacing: .5px;
+    background: #f0ebff; color: var(--violet);
+    padding: 5px 10px; border-radius: 999px; margin-bottom: 14px;
+  }
+  h1 { font-size: 1.55rem; line-height: 1.25; margin: 0 0 6px; }
+  .sub { margin: 0 0 22px; opacity: .75; font-size: .98rem; }
+  .excuse {
+    min-height: 2.6em; margin: 0 0 18px; color: var(--pink-dark);
+    font-family: ui-monospace, Consolas, monospace; font-size: .88rem;
+    transition: opacity .2s ease;
+  }
+
+  button {
+    font: inherit; font-weight: 700; border: 0; cursor: pointer;
+    border-radius: 16px; padding: 14px 30px; min-height: 48px; min-width: 96px;
+    touch-action: manipulation;
+  }
+  #yes {
+    background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+    color: #fff; font-size: 1.1rem;
+    box-shadow: 0 8px 20px rgba(224,69,127,.4);
+    transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+    position: relative; z-index: 5;
+  }
+  #no {
+    background: #fff; color: #6b5f85; font-size: 1rem;
+    border: 2px solid #d8cff0;
+    margin-left: 12px;
+    z-index: 10;                    /* always above a grown Yes button */
+    transition: left .35s ease, top .35s ease;
+  }
+  #no.jumping { position: fixed; margin: 0; }
+  .buttons { display: flex; justify-content: center; align-items: center; min-height: 64px; }
+
+  /* love note */
+  .note {
+    position: absolute; width: calc(100% - 32px); max-width: 440px;
+    background: #fff; border-radius: 28px; padding: 28px 22px;
+    box-shadow: 0 20px 60px rgba(224,69,127,.3);
+    text-align: center; opacity: 0; transform: scale(.6); pointer-events: none;
+    max-height: calc(100% - 32px); overflow-y: auto;
+  }
+  .note.show { animation: pop .7s cubic-bezier(.34,1.56,.64,1) forwards; pointer-events: auto; }
+  @keyframes pop { to { opacity: 1; transform: scale(1); } }
+  .note h2 { margin: 0 0 12px; font-size: 1.5rem; color: var(--pink-dark); }
+  .note p { white-space: pre-line; line-height: 1.6; margin: 0 0 14px; text-align: left; }
+  .note img { max-width: 100%; max-height: 38vh; border-radius: 16px; margin-top: 6px; }
+  .sig { text-align: right !important; font-weight: 700; margin-bottom: 0 !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+    .note.show { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- QUESTION CARD -->
+  <div class="card" id="questionCard">
+    <span class="badge" id="badge"></span>
+    <h1 id="question"></h1>
+    <p class="sub" id="subtitle"></p>
+    <p class="excuse" id="excuse" aria-live="polite">&nbsp;</p>
+    <div class="buttons">
+      <button id="yes">Yes</button>
+      <button id="no">No</button>
+    </div>
+  </div>
+
+  <!-- LOVE NOTE (revealed after Yes) -->
+  <div class="note" id="note">
+    <h2 id="noteTitle"></h2>
+    <p id="noteBody"></p>
+    <img id="noteGif" alt="" hidden>
+    <p class="sig" id="noteSig"></p>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<script>
+/* ============================================================
+   CUSTOMIZE EVERYTHING HERE
+   ============================================================ */
+const CONFIG = {
+  // Badge above the question (the nerdy bit)
+  badge: "monthsary.exe",
+
+  // The question
+  question: "Will you celebrate our monthsary with me?",
+  subtitle: "Every month with you is my favorite release.",
+
+  // Your webhook URL. Leave as-is to disable the alert.
+  // Discord: Channel settings > Integrations > Webhooks > Copy Webhook URL
+  // Make / n8n / Zapier: paste the "Custom webhook" URL.
+  WEBHOOK_URL: "PASTE_YOUR_WEBHOOK_URL_HERE",
+
+  // What the alert says. {when} and {noCount} are filled in automatically.
+  alertText: "She said YES! ({when}, after {noCount} 'No' taps)",
+
+  // Funny excuses, shown in order, then looped
+  excuses: [
+    "Error 404: 'No' not found",
+    "System glitch, try again",
+    "My algorithm says you meant Yes",
+    "Permission denied: 'No' requires admin rights",
+    "Loading 'No'... 99%... connection lost",
+    "Neural network confidence in 'No': 0.00%",
+    "Stack overflow: too much love",
+    "Have you tried turning 'No' off and on again?",
+    "Bug detected: 'No' is deprecated",
+    "ChatGPT says the answer is Yes",
+    "Rolling back to the last stable choice: Yes"
+  ],
+
+  // The love note shown after she taps Yes
+  noteTitle: "Happy Monthsary, love!",
+  // >>> PASTE YOUR OWN MESSAGE BELOW (line breaks are kept) <<<
+  noteMessage: "YOUR MESSAGE GOES HERE.",
+  noteSignature: "Yours, always",
+  // Optional cute GIF. Paste a direct image/GIF URL, or leave "" for none.
+  gifUrl: ""
+};
+
+/* ============================================================
+   APP LOGIC (no need to edit below)
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const yes = $("yes"), no = $("no");
+const PAD = 12;                 // keeps the No button off the screen edges
+let noCount = 0;
+let yesScale = 1;
+
+$("badge").textContent = CONFIG.badge;
+$("question").textContent = CONFIG.question;
+$("subtitle").textContent = CONFIG.subtitle;
+$("noteTitle").textContent = CONFIG.noteTitle;
+$("noteBody").textContent = CONFIG.noteMessage;
+$("noteSig").textContent = CONFIG.noteSignature;
+if (CONFIG.gifUrl) { $("noteGif").src = CONFIG.gifUrl; $("noteGif").hidden = false; }
+
+function rectsOverlap(a, b, gap) {
+  return !(a.right + gap < b.left || a.left - gap > b.right ||
+           a.bottom + gap < b.top || a.top - gap > b.bottom);
+}
+
+function moveNoButton() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const w = no.offsetWidth, h = no.offsetHeight;
+  const yesRect = yes.getBoundingClientRect();     // includes the current scale
+  const maxX = Math.max(PAD, vw - w - PAD);
+  const maxY = Math.max(PAD, vh - h - PAD);
+
+  let best = null;
+  for (let i = 0; i < 60; i++) {
+    const x = PAD + Math.random() * (maxX - PAD);
+    const y = PAD + Math.random() * (maxY - PAD);
+    const r = { left: x, top: y, right: x + w, bottom: y + h };
+    if (!rectsOverlap(r, yesRect, 8)) { best = { x, y }; break; }
+  }
+  if (!best) {                                    // Yes is huge: try the four corners
+    const corners = [[PAD, PAD], [maxX, PAD], [PAD, maxY], [maxX, maxY]];
+    best = corners
+      .map(([x, y]) => ({ x, y, r: { left: x, top: y, right: x + w, bottom: y + h } }))
+      .find(c => !rectsOverlap(c.r, yesRect, 0)) || { x: maxX, y: maxY };
+  }
+  no.classList.add("jumping");
+  no.style.left = best.x + "px";
+  no.style.top = best.y + "px";
+}
+
+function growYes() {
+  const base = yes.offsetWidth;
+  const cap = Math.max(2, (window.innerWidth * 1.6) / base);  // can dominate, never explode
+  yesScale = Math.min(yesScale + 0.35, cap);
+  yes.style.transform = "scale(" + yesScale + ")";
+}
+
+function onNo(e) {
+  e.preventDefault();
+  const text = CONFIG.excuses[noCount % CONFIG.excuses.length];
+  noCount++;
+  const el = $("excuse");
+  el.style.opacity = 0;
+  setTimeout(() => { el.textContent = text; el.style.opacity = 1; }, 120);
+  growYes();
+  moveNoButton();
+}
+no.addEventListener("click", onNo);
+// Also react on touch start so a fast tap never "misses" a moving button.
+no.addEventListener("touchstart", onNo, { passive: false });
+
+function notifyMe() {
+  const url = CONFIG.WEBHOOK_URL;
+  if (!url || url.indexOf("PASTE_YOUR") === 0) return;      // not configured: skip silently
+  const when = new Date().toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" });
+  const text = CONFIG.alertText.replace("{when}", when).replace("{noCount}", noCount);
+  // Discord reads "content". Make/n8n/Zapier receive the extra fields too.
+  const payload = {
+    content: text,
+    username: "Monthsary Bot",
+    answer: "yes",
+    timestamp: new Date().toISOString(),
+    noCount: noCount
+  };
+  try {
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true
+    }).catch(() => {});                                     // never block or break the celebration
+  } catch (_) {}
+}
+
+function celebrate() {
+  if (typeof confetti !== "function") return;
+  const burst = (o) => confetti(Object.assign({ particleCount: 80, spread: 70, origin: { y: 0.6 } }, o));
+  burst({}); burst({ angle: 60, origin: { x: 0, y: 0.7 } }); burst({ angle: 120, origin: { x: 1, y: 0.7 } });
+  let n = 0;
+  const t = setInterval(() => { burst({ particleCount: 40, spread: 100, origin: { x: Math.random(), y: Math.random() * 0.4 } }); if (++n > 6) clearInterval(t); }, 350);
+}
+
+yes.addEventListener("click", () => {
+  notifyMe();                                               // non-blocking
+  $("questionCard").classList.add("hide");
+  no.style.display = "none";
+  yes.style.display = "none";
+  setTimeout(() => { $("questionCard").style.display = "none"; }, 400);
+  $("note").classList.add("show");
+  celebrate();
+});
+
+// Keep the No button inside the screen if the phone rotates or resizes.
+window.addEventListener("resize", () => { if (no.classList.contains("jumping")) moveNoButton(); });
+</script>
+</body>
+</html>
