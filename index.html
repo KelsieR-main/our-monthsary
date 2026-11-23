@@ -217,6 +217,9 @@ function moveNoButton() {
       .map(([x, y]) => ({ x, y, r: { left: x, top: y, right: x + w, bottom: y + h } }))
       .find(c => !rectsOverlap(c.r, yesRect, 0)) || { x: maxX, y: maxY };
   }
+  // The card uses backdrop-filter, which would make it the containing block for
+  // position:fixed. Moving the button to <body> keeps coordinates tied to the screen.
+  if (no.parentNode !== document.body) document.body.appendChild(no);
   no.classList.add("jumping");
   no.style.left = best.x + "px";
   no.style.top = best.y + "px";
